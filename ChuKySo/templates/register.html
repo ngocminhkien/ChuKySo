@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng ký - Web Truyền File Ký Số</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+<body class="auth-body">
+    <div class="auth-container">
+        <div class="auth-card">
+            <h1 class="auth-title"><i class="fas fa-user-plus"></i> Đăng ký tài khoản</h1>
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <ul class="flashes">
+                    {% for category, message in messages %}
+                        <li class="flash-{{ category if category else 'default' }}">{{ message }} <span class="close-btn">&times;</span></li>
+                    {% endfor %}
+                    </ul>
+                {% endif %}
+            {% endwith %}
+
+            <form action="/register" method="post" class="auth-form">
+                <div class="form-group">
+                    <label for="username"><i class="fas fa-user"></i> Tên người dùng:</label>
+                    <input type="text" id="username" name="username" required class="form-input">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password"><i class="fas fa-lock"></i> Mật khẩu:</label>
+                    <input type="password" id="password" name="password" required class="form-input">
+                </div>
+                
+                <button type="submit" class="btn btn-primary auth-btn">Đăng ký</button>
+            </form>
+            <p class="auth-link-text">Đã có tài khoản? <a href="{{ url_for('login') }}" class="auth-link">Đăng nhập tại đây</a>.</p>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Truyền File Ký Số</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1 class="app-title"><i class="fas fa-signature"></i> Ứng dụng Ký Số & Chia Sẻ File</h1>
+            <nav class="main-nav">
+                {% if username %}
+                    <span class="welcome-message">Chào mừng, {{ username }}!</span>
+                    <a href="{{ url_for('logout') }}" class="btn btn-secondary">Đăng xuất</a>
+                {% else %}
+                    <a href="{{ url_for('login') }}" class="btn btn-primary">Đăng nhập</a>
+                    <a href="{{ url_for('register') }}" class="btn btn-secondary">Đăng ký</a>
+                {% endif %}
+            </nav>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul class="flashes">
+                {% for category, message in messages %}
+                    <li class="flash-{{ category if category else 'default' }}">{{ message }} <span class="close-btn">&times;</span></li>
+                {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+
+        <div class="dashboard-grid">
+            <div class="dashboard-section">
+                <h2><i class="fas fa-upload"></i> Tải & Ký File</h2>
+                <form action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data" class="upload-form">
+                    <div class="form-group">
+                        <label for="file_to_upload">Chọn File:</label>
+                        <input type="file" id="file_to_upload" name="file" required class="form-input-file">
+                    </div>
+                    <button type="submit" class="btn btn-primary upload-btn"><i class="fas fa-cloud-upload-alt"></i> Tải lên & Ký</button>
+                </form>
+
+                <h3>File đã ký:</h3>
+                {% if user_files %}
+                    <table class="file-table">
+                        <thead>
+                            <tr>
+                                <th>Tên File</th>
+                                <th>Ngày Tải</th>
+                                <th>Đã Gửi Đến</th>
+                                <th>Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for file in user_files %}
+                            <tr class="file-item">
+                                <td>{{ file.original_filename }}</td>
+                                <td>{{ file.upload_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>{% if file.sent_to_username %}<span class="sent-to-user">{{ file.sent_to_username }}</span>{% else %}Chưa gửi{% endif %}</td>
+                                <td class="file-actions">
+                                    <a href="{{ url_for('download', filename=file.filename) }}" class="btn btn-action download-btn" title="Tải xuống"><i class="fas fa-download"></i></a>
+                                    <a href="{{ url_for('verify', file_id=file.id) }}" class="btn btn-action verify-btn" title="Xác minh"><i class="fas fa-check-circle"></i></a>
+                                    <button class="btn btn-action send-button" data-file-id="{{ file.id }}" title="Gửi"><i class="fas fa-paper-plane"></i></button>
+                                </td>
+                            </tr>
+                            <tr class="send-form-row">
+                                <td colspan="4">
+                                    <form action="{{ url_for('send_file', file_id=file.id) }}" method="post" class="send-file-form">
+                                        <label for="recipient-{{ file.id }}">Gửi đến:</label>
+                                        <select name="recipient_username" id="recipient-{{ file.id }}" required class="form-select">
+                                            <option value="">Chọn người nhận</option>
+                                            {% for u in public_keys_available %}<option value="{{ u }}">{{ u }}</option>{% endfor %}
+                                        </select>
+                                        <button type="submit" class="btn btn-success"><i class="fas fa-paper-plane"></i> Gửi</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p class="info-message">Bạn chưa có file nào.</p>
+                {% endif %}
+            </div>
+
+            <div class="dashboard-section">
+                <h2><i class="fas fa-inbox"></i> File Nhận</h2>
+                {% if received_files %}
+                    <table class="file-table">
+                        <thead>
+                            <tr>
+                                <th>Tên File</th>
+                                <th>Người Gửi</th>
+                                <th>Ngày Gửi</th>
+                                <th>Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for file in received_files %}
+                            <tr class="file-item">
+                                <td>{{ file.original_filename }}</td>
+                                <td>{{ file.uploader.username }}</td>
+                                <td>{{ file.upload_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td class="file-actions">
+                                    <a href="{{ url_for('download', filename=file.filename) }}" class="btn btn-action download-btn"><i class="fas fa-download"></i></a>
+                                    <a href="{{ url_for('verify', file_id=file.id) }}" class="btn btn-action verify-btn"><i class="fas fa-check-circle"></i></a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p class="info-message">Chưa có file nào được gửi đến bạn.</p>
+                {% endif %}
+            </div>
+
+            <div class="dashboard-section key-management-section">
+                <h2><i class="fas fa-key"></i> Quản lý Khóa RSA</h2>
+                {% if has_keys %}
+                    <p class="key-status success-message">
+                        <i class="fas fa-check-circle"></i> Bạn đã có khóa công khai.
+                        <a href="{{ url_for('serve_public_key', filename=username + '_public.pem') }}" download class="btn btn-link download-key-btn"><i class="fas fa-download"></i> Tải khóa công khai</a>
+                    </p>
+                {% else %}
+                    <p class="key-status info-message">
+                        <i class="fas fa-info-circle"></i> Bạn chưa có khóa. Có thể tạo thủ công:
+                    </p>
+                    <form action="{{ url_for('generate_my_keys') }}" method="post">
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-plus-circle"></i> Tạo khóa</button>
+                    </form>
+                {% endif %}
+
+                <h3>Khóa công khai của người dùng khác:</h3>
+                {% if public_keys_available %}
+                    <ul class="public-keys-list">
+                        {% for user in public_keys_available %}
+                        <li>
+                            <i class="fas fa-user-lock"></i> {{ user }}
+                            <a href="{{ url_for('serve_public_key', filename=user + '_public.pem') }}" class="btn btn-link download-key-btn"><i class="fas fa-download"></i> Tải</a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="info-message">Không có khóa công khai nào khác.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
